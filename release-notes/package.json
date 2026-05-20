@@ -1,0 +1,17 @@
+{
+    "name": "@tolokoban/mcp-release-notes",
+    "version": "1.0.1",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "tsx src/index.ts",
+        "test": "printf '%s\n%s\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0.0\"}}}' '{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"generate_release_notes\",\"arguments\":{}}}' | timeout 5 tsx src/index.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}
