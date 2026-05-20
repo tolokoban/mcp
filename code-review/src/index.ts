@@ -125,7 +125,7 @@ server.registerTool(
                         "All data has been collected in `.code-review/`.",
                         "",
                         "Now, perform a code review by comparing `.code-review/current/` with `.code-review/main/`.",
-                        "Do NOT use any shell command. Only rely on the content of `.code-review/`.",
+                        "Do NOT use any shell command. Only rely on the content of `.code-review/`, and if you need more context, look into the files in the current project.",
                         "",
                         "For each changed file, review:",
                         "- Potential bugs or logic errors",

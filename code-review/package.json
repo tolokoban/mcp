@@ -4,12 +4,14 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "start": "tsx src/index.ts"
+        "start": "bash test-tool.sh",
+        "test": "npx @modelcontextprotocol/inspector -e PROJECT_ROOT=$HOME/Code/github/AI/mcp npx tsx src/index.ts"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0"
     },
     "devDependencies": {
+        "@modelcontextprotocol/inspector": "^0.21.2",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3"
     }

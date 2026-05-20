@@ -69,7 +69,7 @@ In `.amazonq/mcp.json` at the workspace root:
 ```json
 {
   "mcpServers": {
-    "code-review": {
+    "release-notes": {
       "command": "npx",
       "args": ["tsx", "<PATH_TO>/mcp/code-review/src/index.ts"],
       "env": {

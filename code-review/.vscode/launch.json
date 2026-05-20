@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug MCP Server",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["tsx", "src/index.ts"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PROJECT_ROOT": "${workspaceFolder}/.."
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"]
+        }
+    ]
+}

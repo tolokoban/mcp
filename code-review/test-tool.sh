@@ -1,0 +1,2 @@
+#!/bin/bash
+printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prepare_code_review","arguments":{}}}\n' | PROJECT_ROOT="${PROJECT_ROOT:-$HOME/Code/github/AI/mcp}" npx tsx src/index.ts
