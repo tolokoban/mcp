@@ -1,0 +1,16 @@
+{
+    "name": "@tolokoban/mcp-code-review",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "tsx src/index.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}

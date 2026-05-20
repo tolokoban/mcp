@@ -35,7 +35,7 @@ Add the following to your `.vscode/mcp.json` (create it if it doesn't exist):
   "servers": {
     "release-notes": {
       "command": "npx",
-      "args": ["tsx", "<ROOT_OF_MCP_SERVER>/mcp/release-notes/src/index.ts"],
+      "args": ["tsx", "<PATH_TO>/mcp/release-notes/src/index.ts"],
       "env": {
         "PROJECT_ROOT": "${workspaceFolder}"
       }
@@ -53,7 +53,7 @@ Add the following to your `claude_desktop_config.json` (located at `~/.config/cl
   "mcpServers": {
     "release-notes": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/mcp/release-notes/src/index.ts"],
+      "args": ["tsx", "<PATH_TO>/mcp/release-notes/src/index.ts"],
       "env": {
         "PROJECT_ROOT": "/absolute/path/to/your/project"
       }
@@ -62,7 +62,25 @@ Add the following to your `claude_desktop_config.json` (located at `~/.config/cl
 }
 ```
 
-Replace `/absolute/path/to/...` with the actual paths on your system.
+### Amazon Q Developer
+
+In `.amazonq/mcp.json` at the workspace root:
+
+```json
+{
+  "mcpServers": {
+    "code-review": {
+      "command": "npx",
+      "args": ["tsx", "<PATH_TO>/mcp/code-review/src/index.ts"],
+      "env": {
+        "PROJECT_ROOT": "${workspaceFolder}"
+      }
+    }
+  }
+}
+```
+
+Replace `<PATH_TO>` with the actual paths on your system.
 
 ## Environment Variables
 
