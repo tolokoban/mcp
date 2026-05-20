@@ -1,28 +1,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { z } from "zod"
 import { execSync } from "node:child_process"
 import { readFileSync, mkdirSync, rmSync, writeFileSync, copyFileSync, existsSync, statSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 
-function getProjectRoot(): string | null {
-    const root = process.env.PROJECT_ROOT
+function getProjectRoot(inputRoot?: string): string | null {
+    const root = inputRoot || process.argv[2] || process.env.PROJECT_ROOT
     if (!root || !existsSync(root) || !statSync(root).isDirectory()) return null
     return resolve(root)
 }
 
-const PROJECT_ROOT = getProjectRoot()
-const CODE_REVIEW_DIR = PROJECT_ROOT ? resolve(PROJECT_ROOT, ".code-review") : ""
-
-function git(cmd: string): string {
-    return execSync(`git ${cmd}`, {
-        cwd: PROJECT_ROOT!,
-        encoding: "utf-8",
-    }).trim()
+function git(cmd: string, cwd: string): string {
+    return execSync(`git ${cmd}`, { cwd, encoding: "utf-8" }).trim()
 }
 
-function getMainBranch(): string {
+function getMainBranch(cwd: string): string {
     try {
-        git("rev-parse --verify remotes/origin/main")
+        git("rev-parse --verify remotes/origin/main", cwd)
         return "remotes/origin/main"
     } catch {
         return "remotes/origin/master"
@@ -35,41 +30,30 @@ const server = new McpServer({
 })
 
 server.registerTool(
-    "prepare_code_review",
+    "tolokoban_code_review",
     {
-        description:
-            "Gather changed files between the current branch and main/master, then prepare context for a code review",
+        description: [
+            "Use this tool for the current project when the user asks for a \"tolokoban code review\" or \"tlk code review\".",
+            "Gather changed files between the current branch and main/master, then prepare context for a code review"
+        ].join(" "),
+        inputSchema: {
+            projectRoot: z.string().describe("Absolute path to the project root folder"),
+        },
     },
-    async () => {
+    async ({ projectRoot }) => {
+        const PROJECT_ROOT = getProjectRoot(projectRoot)
+        const CODE_REVIEW_DIR = PROJECT_ROOT ? resolve(PROJECT_ROOT, ".code-review") : ""
         if (!PROJECT_ROOT) {
             return {
                 content: [{
                     type: "text" as const,
-                    text: [
-                        "ERROR: PROJECT_ROOT environment variable is not set or points to a non-existent directory.",
-                        "Please set it to the root folder of your project and restart the server.",
-                        "",
-                        "If you are using VSCode, you can set it in the `.vscode/mcp.json` file:",
-                        "",
-                        "```json",
-                        "{",
-                        "  \"servers\": {",
-                        "    \"code-review\": {",
-                        "      \"command\": \"npx\",",
-                        "      \"args\": [\"tsx\", \"<ROOT_OF_MCP_SERVER>/mcp/code-review/src/index.ts\"],",
-                        "      \"env\": {",
-                        "        \"PROJECT_ROOT\": \"${workspaceFolder}\"",
-                        "      }",
-                        "    }",
-                        "  }",
-                        "}",
-                        "```",
-                    ].join("\n")
+                    text: `ERROR: projectRoot points to a non-existent directory: "${projectRoot}".
+Please provide a valid absolute path to the project root folder.`,
                 }],
             }
         }
 
-        const main = getMainBranch()
+        const main = getMainBranch(PROJECT_ROOT)
 
         // Clean/create .code-review directory
         if (existsSync(CODE_REVIEW_DIR)) {
@@ -90,7 +74,7 @@ server.registerTool(
         }
 
         // Get changed files
-        const filesRaw = git(`diff --name-only ${main}...HEAD`)
+        const filesRaw = git(`diff --name-only ${main}...HEAD`, PROJECT_ROOT)
         const files = filesRaw.split("\n").filter(Boolean)
         writeFileSync(resolve(CODE_REVIEW_DIR, "files.txt"), filesRaw, "utf-8")
 
@@ -108,7 +92,7 @@ server.registerTool(
             const mainPath = resolve(CODE_REVIEW_DIR, "main", file)
             mkdirSync(dirname(mainPath), { recursive: true })
             try {
-                const content = git(`show ${main}:${file}`)
+                const content = git(`show ${main}:${file}`, PROJECT_ROOT)
                 writeFileSync(mainPath, content, "utf-8")
             } catch {
                 // File didn't exist in main
@@ -133,6 +117,8 @@ server.registerTool(
                         "- Performance issues",
                         "- Code style and readability",
                         "- Possible improvements",
+                        "",
+                        "For every issue reported, please provide the path of the file (relative to the workspace root folder), and the line number.",
                         "",
                         "Then create `.code-review/PR.md` with:",
                         "- A summary of what changed between `main` and `current`",

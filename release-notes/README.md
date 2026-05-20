@@ -26,6 +26,11 @@ cd mcp/release-notes
 npm install
 ```
 
+The server needs to know the project root. It accepts it as:
+
+1. A CLI argument (first positional arg)
+2. The `PROJECT_ROOT` environment variable
+
 ### VS Code
 
 Add the following to your `.vscode/mcp.json` (create it if it doesn't exist):
@@ -71,19 +76,10 @@ In `.amazonq/mcp.json` at the workspace root:
   "mcpServers": {
     "release-notes": {
       "command": "npx",
-      "args": ["tsx", "<PATH_TO>/mcp/code-review/src/index.ts"],
-      "env": {
-        "PROJECT_ROOT": "${workspaceFolder}"
-      }
+      "args": ["tsx", "<PATH_TO>/mcp/release-notes/src/index.ts"]
     }
   }
 }
 ```
 
 Replace `<PATH_TO>` with the actual paths on your system.
-
-## Environment Variables
-
-| Variable       | Description                          | Default         |
-|----------------|--------------------------------------|-----------------|
-| `PROJECT_ROOT` | Absolute path to the project root    | `process.cwd()` |

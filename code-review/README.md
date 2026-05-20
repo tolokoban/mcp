@@ -20,7 +20,10 @@ An MCP server that prepares a code review of the current branch compared to `mai
 
 ## Installation
 
-The server requires the `PROJECT_ROOT` environment variable to point to the root of the project being reviewed.
+The server needs to know the project root. It accepts it as:
+
+1. A CLI argument (first positional arg)
+2. The `PROJECT_ROOT` environment variable
 
 ### VSCode
 
@@ -67,10 +70,7 @@ In `.amazonq/mcp.json` at the workspace root:
   "mcpServers": {
     "code-review": {
       "command": "npx",
-      "args": ["tsx", "<PATH_TO>/mcp/code-review/src/index.ts"],
-      "env": {
-        "PROJECT_ROOT": "${workspaceFolder}"
-      }
+      "args": ["tsx", "<PATH_TO>/mcp/code-review/src/index.ts"]
     }
   }
 }

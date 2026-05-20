@@ -1,22 +1,20 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { z } from "zod"
 import { execSync } from "node:child_process"
 import { readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync, copyFileSync, existsSync, statSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 
-function getProjectRoot(): string | null {
-    const root = process.env.PROJECT_ROOT
+function getProjectRoot(inputRoot?: string): string | null {
+    const root = inputRoot || process.argv[2] || process.env.PROJECT_ROOT
     if (!root || !existsSync(root) || !statSync(root).isDirectory()) return null
     return resolve(root)
 }
 
-const PROJECT_ROOT = getProjectRoot()
-const RELEASE_NOTES_DIR = PROJECT_ROOT ? resolve(PROJECT_ROOT, ".release-notes") : ""
-
-function getGitIgnoredDirs(): Set<string> {
+function getGitIgnoredDirs(cwd: string): Set<string> {
     try {
         const output = execSync("git ls-files --others --ignored --exclude-standard --directory", {
-            cwd: PROJECT_ROOT,
+            cwd,
             encoding: "utf-8",
         }).trim()
         return new Set(output.split("\n").filter(Boolean).map(d => d.replace(/\/$/, "")))
@@ -25,12 +23,12 @@ function getGitIgnoredDirs(): Set<string> {
     }
 }
 
-function findVersionFiles(): string[] {
-    const ignored = getGitIgnoredDirs()
+function findVersionFiles(cwd: string): string[] {
+    const ignored = getGitIgnoredDirs(cwd)
     const files = ["package.json"]
-    for (const entry of readdirSync(PROJECT_ROOT)) {
+    for (const entry of readdirSync(cwd)) {
         if (ignored.has(entry)) continue
-        const dir = resolve(PROJECT_ROOT, entry)
+        const dir = resolve(cwd, entry)
         if (statSync(dir).isDirectory()) {
             const pkg = resolve(dir, "package.json")
             if (existsSync(pkg)) files.push(`${entry}/package.json`)
@@ -39,15 +37,12 @@ function findVersionFiles(): string[] {
     return files
 }
 
-function git(cmd: string): string {
-    return execSync(`git ${cmd}`, {
-        cwd: PROJECT_ROOT,
-        encoding: "utf-8",
-    }).trim()
+function git(cmd: string, cwd: string): string {
+    return execSync(`git ${cmd}`, { cwd, encoding: "utf-8" }).trim()
 }
 
-function readVersion(relativePath: string): { path: string; version: string } {
-    const path = resolve(PROJECT_ROOT, relativePath)
+function readVersion(relativePath: string, cwd: string): { path: string; version: string } {
+    const path = resolve(cwd, relativePath)
     const pkg = JSON.parse(readFileSync(path, "utf-8"))
     return { path: relativePath, version: pkg.version ?? "unknown" }
 }
@@ -58,44 +53,32 @@ const server = new McpServer({
 })
 
 server.registerTool(
-    "generate_release_notes",
+    "tolokoban_release_notes",
     {
-        description:
-            "Gather git history and project context to draft a release note entry for the current project",
+        description: [
+            "Use this tool for the current project when the user asks for a \"tolokoban release notes\" or \"tlk release notes\".",
+            "Gather git history and project context to draft a release note entry for the current project."
+        ].join(" "),
+        inputSchema: {
+            projectRoot: z.string().describe("Absolute path to the project root folder"),
+        },
     },
-    async () => {
+    async ({ projectRoot }) => {
+        const PROJECT_ROOT = getProjectRoot(projectRoot)
+        const RELEASE_NOTES_DIR = PROJECT_ROOT ? resolve(PROJECT_ROOT, ".release-notes") : ""
         if (!PROJECT_ROOT) {
             return {
                 content: [{
                     type: "text" as const,
-                    text: [
-                        "ERROR: PROJECT_ROOT environment variable is not set or points to a non-existent directory.",
-                        "Please set it to the root folder of your project and restart the server.",
-                        "",
-                        "If you are using VSCode, you can set it in the `.vscode/mcp.json` file:",
-                        "",
-                        "```json",
-                        "{",
-                        "  \"servers\": {",
-                        "    \"release-notes\": {",
-                        "      \"command\": \"npx\",",
-                        "      \"args\": [\"tsx\", \"<ROOT_OF_MCP_SERVER>/mcp/release-notes/src/index.ts\"],",
-                        "      \"env\": {",
-                        "        \"PROJECT_ROOT\": \"${workspaceFolder}\"",
-                        "      }",
-                        "    }",
-                        "  }",
-                        "}",
-                        "```",
-
-                    ].join("\n")
+                    text: `ERROR: projectRoot points to a non-existent directory: ${projectRoot}.
+Please provide a valid absolute path to the project root folder.`,
                 }],
             }
         }
         const messages: string[] = ["Checking current version"]
 
         // 1. Check version consistency
-        const versions = findVersionFiles().map(readVersion)
+        const versions = findVersionFiles(PROJECT_ROOT).map(f => readVersion(f, PROJECT_ROOT))
         const rootVersion = versions[0].version
         const allMatch = versions.every((v) => v.version === rootVersion)
 
@@ -120,7 +103,8 @@ server.registerTool(
 
         // 2. Find PREV_COMMIT
         const prevCommit = git(
-            `rev-parse $(git log --format="%H" -S "${rootVersion}" -- package.json | tail -1)~1`
+            `rev-parse $(git log --format="%H" -S "${rootVersion}" -- package.json | tail -1)~1`,
+            PROJECT_ROOT
         )
         messages.push(`Previous commit: ${prevCommit}`)
 
@@ -143,11 +127,11 @@ server.registerTool(
         }
 
         // 4. Get commit log and store in log.txt
-        const log = git(`log ${prevCommit}..HEAD --format="%s"`)
+        const log = git(`log ${prevCommit}..HEAD --format="%s"`, PROJECT_ROOT)
         writeFileSync(resolve(RELEASE_NOTES_DIR, "log.txt"), log, "utf-8")
 
         // 5. Get changed files list
-        const filesRaw = git(`diff --name-only ${prevCommit} HEAD`)
+        const filesRaw = git(`diff --name-only ${prevCommit} HEAD`, PROJECT_ROOT)
         const files = filesRaw.split("\n").filter(Boolean)
         writeFileSync(resolve(RELEASE_NOTES_DIR, "files.txt"), filesRaw, "utf-8")
 
@@ -157,7 +141,7 @@ server.registerTool(
             const prevPath = resolve(RELEASE_NOTES_DIR, "previous", file)
             mkdirSync(dirname(prevPath), { recursive: true })
             try {
-                const content = git(`show ${prevCommit}:${file}`)
+                const content = git(`show ${prevCommit}:${file}`, PROJECT_ROOT)
                 writeFileSync(prevPath, content, "utf-8")
             } catch {
                 // File didn't exist in previous commit
